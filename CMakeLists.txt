@@ -12,6 +12,7 @@ include(${PROJECT_SOURCE_DIR}/cmake/AddProjectLibrary.cmake)
 include(${PROJECT_SOURCE_DIR}/cmake/AddProjectExecutable.cmake)
 include(${PROJECT_SOURCE_DIR}/cmake/AddProjectTest.cmake)
 include(${PROJECT_SOURCE_DIR}/cmake/BuildTypeOptions.cmake)
+include(${PROJECT_SOURCE_DIR}/cmake/ConvenienceTargets.cmake)
 
 add_library(project_warnings INTERFACE)
 target_enable_strict_warnings(project_warnings)
