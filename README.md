@@ -1,91 +1,46 @@
-# Proyecto C++ con CMake
+# Proyecto C++ con CMake — Guía rápida
 
-Template minimalista para proyectos C++ con CMake.
+Plantilla con headers en `include/`, librerías en `src/`, ejecutables en `apps/` y tests en `tests/`.
 
-Soporta:
-- Múltiples ejecutables en un mismo proyecto
-- Compartir librerías internas entre ejecutables
-- Debug (GDB/Valgrind) y Release (-O3) con presets
+Rápido para empezar:
 
-## Estructura
-
-```text
-.
-├── CMakeLists.txt
-├── CMakePresets.json
-├── cmake/
-├── include/
-├── src/
-├── apps/
-└── docs/
-```
-
-## Uso rápido
-
-**Debug:**
 ```bash
+# Configurar + compilar (Debug)
 cmake --preset debug
 cmake --build --preset debug
+
+# Ejecutar la app principal
 ./build/debug/apps/main_app
-```
 
-**Release:**
-```bash
-cmake --preset release
-cmake --build --preset release
-./build/release/apps/main_app
-```
-
-## Agregar ejecutable
-
-1. Crear archivo en `apps/`, ej: `apps/tool.cpp`
-2. Agregar en `apps/CMakeLists.txt`:
-```cmake
-add_project_executable(tool SOURCES tool.cpp)
-```
-
-## Agregar librería
-
-1. Crear header y source de la librería, por ejemplo:
-   - `include/math/sum.hpp`
-   - `src/math/sum.cpp`
-2. Registrar la librería en `src/CMakeLists.txt`:
-```cmake
-add_project_library(math
-	SOURCES math/sum.cpp
-)
-```
-3. Enlazar la librería desde un ejecutable en `apps/CMakeLists.txt`:
-```cmake
-add_project_executable(main_app
-	SOURCES main.cpp
-	LIBRARIES math
-)
-```
-
-Nota: `add_project_library(...)` expone automáticamente `include/` para que puedas incluir headers como `#include <math/sum.hpp>`.
-
-## Agregar test (ejemplo)
-
-1. Crear archivo de test en `tests/`, por ejemplo: `tests/greeting_test.cpp`
-2. Registrar el test en `tests/CMakeLists.txt`:
-```cmake
-add_project_test(greeting_test
-	SOURCES greeting_test.cpp
-)
-```
-3. Compilar en Debug y ejecutar tests:
-```bash
-cmake --preset debug
-cmake --build --preset debug
+# Ejecutar tests (CTest)
 ctest --test-dir build/debug --output-on-failure
-# Alternativa: ejecutar el binario de test directamente
-./build/debug/tests/greeting_test
+
+# Alternativa: targets de conveniencia (desde build/debug con Makefiles)
+make run_main
+make run_tests
 ```
 
-El framework usado es Catch2 (vía `FetchContent`) y cada test se registra en CTest mediante `add_project_test(...)`.
+Detalles y reglas del proyecto (helpers de CMake, tests, targets de conveniencia) están en la documentación extensa: [docs/cmake_workflow.md](docs/cmake_workflow.md).
 
-Ejemplo real incluido: `tests/greeting_test.cpp`.
+```bash
+# Ejecutar el binario directamente (útil para debug rápido)
+./build/debug/apps/main_app
+
+# Ejecutar un test en particular directamente
+./build/debug/tests/greeting_test
+
+# Ejecutar todos los tests con CTest (muestra salida en fallos)
+ctest --test-dir build/debug --output-on-failure
+
+# Ejecutar valgrind si el target de convenience falla o no está disponible
+valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./build/debug/apps/main_app
+
+# Forzar compilación antes de ejecutar si algo no está actualizado
+cmake --build --preset debug --target greeting_test
+```
+
+Consejo: si usas otros generadores (por ejemplo `Ninja`) reemplaza `make ...` por el workflow de CMake (`cmake --build`).
+
 
 ## Documentación
 

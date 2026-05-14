@@ -1,12 +1,24 @@
 # Cómo funciona CMake en esta estructura
 
+## Índice
+
+- [Visión general](#visi%C3%B3n-general)
+- [Presets (CMakePresets.json)](#presets-cmakepresetsjson)
+- [Flow típico de compilación](#flow-t%C3%ADpico-de-compilaci%C3%B3n)
+- [Headers (`include/`)](#headers-include)
+- [Tests](#tests)
+- [Convenience targets](#convenience-targets)
+- [Escalado: agregar librerías o ejecutables](#escalado-agregar-librer%C3%ADas-o-ejecutables)
+- [Ventajas](#ventajas)
+
 ## Visión general
 
 Esta estructura usa un patrón modular de CMake donde:
 - **cmake/** contiene funciones reutilizables
+- **include/** contiene headers públicos de las librerías (organizados por módulo)
 - **src/** contiene librerías compartidas (sin `main`)
 - **apps/** contiene ejecutables del proyecto
-- Cada ejecutable enlaza automáticamente contra las librerías en src
+- **tests/** contiene tests integrados con CTest y Catch2
 
 ## Estructura de CMakeLists.txt
 
@@ -55,6 +67,23 @@ add_subdirectory(apps)
 ```
 
 Procesa las carpetas src y apps en ese orden.
+
+## Headers (`include/`)
+
+Este proyecto expone los headers públicos en la carpeta `include/`. Las reglas principales son:
+
+- Coloca los headers públicos bajo `include/` manteniendo un prefijo por módulo, por ejemplo `include/core/greeting.hpp`.
+- Los sources de `src/` deben incluir headers públicos como `#include <core/greeting.hpp>`.
+- La función helper `add_project_library(...)` añade `target_include_directories(... PUBLIC ${PROJECT_SOURCE_DIR}/include)`, por lo que los ejecutables y tests que enlacen la librería pueden incluir los headers sin rutas relativas.
+- Para headers privados del módulo, ponlos en `src/<module>/detail/` o en el mismo `src/` y no los exportes en `include/`.
+
+Ejemplo de uso en código:
+
+```cpp
+#include <core/greeting.hpp>
+```
+
+Esto evita usar rutas relativas complejas en los includes y mantiene una API pública clara.
 
 ### src/CMakeLists.txt
 
@@ -297,6 +326,98 @@ cmake --build --preset release
 ./build/debug/apps/main_app
 ./build/release/apps/main_app
 ```
+
+## Tests
+
+En este proyecto los tests se integran con CMake/CTest y usamos Catch2 como framework de aserciones. Componentes principales:
+
+- `enable_testing()` — habilita el soporte de testing en el proyecto; añade la infraestructura que CTest usa para descubrir tests.
+- `add_test(<name> COMMAND <cmd>)` — registra un test en CTest; CTest ejecutará `<cmd>` cuando corras `ctest`.
+- `add_project_test(...)` — helper del repositorio (en `cmake/AddProjectTest.cmake`) que crea el ejecutable de test, lo enlaza contra `core` y Catch2, e invoca `add_test()` para registrarlo automáticamente.
+- Catch2 — framework de tests (se obtiene con `FetchContent` desde `tests/CMakeLists.txt`) que proporciona `TEST_CASE` y `REQUIRE`.
+
+Flujo práctico:
+
+1. CMake genera y compila los ejecutables de test.
+2. Cada ejecutable queda registrado en CTest vía `add_test`.
+3. Ejecutas los tests con CTest o directamente ejecutando el binario.
+
+Comandos útiles:
+
+```bash
+# Configurar y compilar (Debug preset)
+cmake --preset debug
+cmake --build --preset debug
+
+# Ejecutar todos los tests con CTest (muestra salida al fallar)
+ctest --test-dir build/debug --output-on-failure
+
+# Ejecutar un test directamente
+./build/debug/tests/greeting_test
+```
+
+Ejecutar/filtrar tests con CTest
+
+```bash
+# Ejecutar todos los tests (salida en fallos)
+ctest --test-dir build/debug --output-on-failure
+
+# Ejecutar tests cuyo nombre coincida con 'greeting'
+ctest --test-dir build/debug -R greeting --output-on-failure
+
+# Ejecutar tests en paralelo (ej: 4 jobs)
+ctest --test-dir build/debug -j4 --output-on-failure
+
+# Output verboso (útil para depurar)
+ctest --test-dir build/debug -V
+```
+
+## Convenience targets
+
+Los targets de conveniencia están definidos en `cmake/ConvenienceTargets.cmake` y expuestos como objetivos build para facilitar ejecutar binarios y tests sin escribir rutas.
+
+Ejemplos disponibles:
+
+- `run_main` — ejecuta `main_app`.
+- `run_sandbox` — ejecuta `sandbox_app`.
+- `run_greeting_test` — ejecuta el binario `greeting_test`.
+- `run_tests` — ejecuta `ctest` en la carpeta de build (equivalente a `ctest --test-dir <dir>`).
+- `valgrind_main` — ejecuta `main_app` bajo Valgrind (si `valgrind` está instalado).
+
+Invocación:
+
+```bash
+# Con Makefiles (desde build/debug)
+make run_tests
+
+# Con CMake (desde raíz)
+cmake --build --preset debug --target run_tests
+```
+
+Qué se evita con estos targets
+
+- Escribir rutas largas a binarios (`build/debug/...`).
+- Confundir carpetas de build (`debug` vs `release`).
+- Olvidar flags repetitivos de Valgrind.
+
+Comandos de respaldo si un target falla
+
+```bash
+# Ejecutar binario directamente
+./build/debug/apps/main_app
+
+# Ejecutar test directamente
+./build/debug/tests/greeting_test
+
+# Ejecutar tests con CTest
+ctest --test-dir build/debug --output-on-failure
+
+# Ejecutar valgrind manualmente
+valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./build/debug/apps/main_app
+```
+
+Consejo: si usas otro generador (por ejemplo `Ninja`) usa `cmake --build` en lugar de `make` para invocar los targets.
+
 
 ## Escalado: agregar librerías o ejecutables
 
