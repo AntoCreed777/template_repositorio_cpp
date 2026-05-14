@@ -65,6 +65,28 @@ add_project_executable(main_app
 
 Nota: `add_project_library(...)` expone automáticamente `include/` para que puedas incluir headers como `#include <math/sum.hpp>`.
 
+## Agregar test (ejemplo)
+
+1. Crear archivo de test en `tests/`, por ejemplo: `tests/greeting_test.cpp`
+2. Registrar el test en `tests/CMakeLists.txt`:
+```cmake
+add_project_test(greeting_test
+	SOURCES greeting_test.cpp
+)
+```
+3. Compilar en Debug y ejecutar tests:
+```bash
+cmake --preset debug
+cmake --build --preset debug
+ctest --test-dir build/debug --output-on-failure
+# Alternativa: ejecutar el binario de test directamente
+./build/debug/tests/greeting_test
+```
+
+El framework usado es Catch2 (vía `FetchContent`) y cada test se registra en CTest mediante `add_project_test(...)`.
+
+Ejemplo real incluido: `tests/greeting_test.cpp`.
+
 ## Documentación
 
 - [cmake_workflow.md](docs/cmake_workflow.md) - Cómo funciona CMake
